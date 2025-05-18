@@ -41,11 +41,11 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 			case "replace", "add": // "add" on root is same as "replace" for a map document
 				newValue, valExists := op["value"]
 				if !valExists {
-					return fmt.Errorf("op %q on root path \"\" requires a \"value\" field", opType)
+					return fmt.Errorf("op %q on root path %q requires a %q field", opType, pathRaw, "value")
 				}
 				newMapValue, newIsMap := newValue.(map[string]any)
 				if !newIsMap {
-					return fmt.Errorf("op %q on root path \"\" with value of type %T; expected map[string]any", opType, newValue)
+					return fmt.Errorf("op %q on root path %q with value of type %T; expected map[string]any", opType, pathRaw, newValue)
 				}
 				// Clear existing doc and replace with new content
 				for k := range doc {
@@ -63,7 +63,7 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 				continue
 			default:
 				// Other ops like "inc", "str_ins", "str_del" are not meaningful for the root map itself.
-				return fmt.Errorf("op %q on root path \"\" is not supported or not meaningful for a map document", opType)
+				return fmt.Errorf("op %q on root path %q is not supported or not meaningful for a map document", opType, pathRaw)
 			}
 		}
 
@@ -126,7 +126,7 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 		case "replace":
 			value, valueExists := op["value"]
 			if !valueExists {
-				return fmt.Errorf("op \"replace\" missing \"value\" field for path %q", pathRaw)
+				return fmt.Errorf("op %q missing %q field for path %q", "replace", "value", pathRaw)
 			}
 			if targetMap, ok := parentContainer.(map[string]any); ok {
 				// Replace requires that the key already exists according to RFC 6902.
@@ -136,7 +136,7 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 				targetMap[finalKey] = value
 			} else if targetSlice, ok := parentContainer.([]any); ok {
 				if finalIndex < 0 || finalIndex >= len(targetSlice) {
-					return fmt.Errorf("index %d out of bounds for \"replace\" op at path %q (slice len %d)", finalIndex, pathRaw, len(targetSlice))
+					return fmt.Errorf("index %d out of bounds for %q op at path %q (slice len %d)", finalIndex, "replace", pathRaw, len(targetSlice))
 				}
 				targetSlice[finalIndex] = value
 			} else {
@@ -148,7 +148,7 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 			strToInsert, strOk := op["str"].(string)
 			posFloat, posOk := getNumericValue(posAny)
 			if !posPresent || !posOk || !strOk {
-				return fmt.Errorf("invalid \"str_ins\" op parameters (pos/str missing or wrong type) for path %q", pathRaw)
+				return fmt.Errorf("invalid %q op parameters (pos/str missing or wrong type) for path %q", "str_ins", pathRaw)
 			}
 			pos := int(posFloat)
 
@@ -161,26 +161,26 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 					currentString, getStringOk = val.(string)
 					valAtPathForError = val
 				} else { // Key must exist to insert into its string value
-					return fmt.Errorf("target key %q for \"str_ins\" not found in map at path %q", finalKey, pathRaw)
+					return fmt.Errorf("target key %q for %q not found in map at path %q", finalKey, "str_ins", pathRaw)
 				}
 			} else if targetSlice, ok := parentContainer.([]any); ok {
 				if finalIndex >= 0 && finalIndex < len(targetSlice) {
 					currentString, getStringOk = targetSlice[finalIndex].(string)
 					valAtPathForError = targetSlice[finalIndex]
 				} else { // Index must be valid to get string for insertion
-					return fmt.Errorf("index %d out of bounds for \"str_ins\" (getting string) at path %q", finalIndex, pathRaw)
+					return fmt.Errorf("index %d out of bounds for %q (getting string) at path %q", finalIndex, "str_ins", pathRaw)
 				}
 			} else {
-				return fmt.Errorf("parent for \"str_ins\" op at path %q is not a map or slice (type %T)", pathRaw, parentContainer)
+				return fmt.Errorf("parent for %q op at path %q is not a map or slice (type %T)", "str_ins", pathRaw, parentContainer)
 			}
 
 			if !getStringOk { // Target was found but was not a string
-				return fmt.Errorf("target of \"str_ins\" at path %q is not a string (actual type: %T, value: %+v)", pathRaw, valAtPathForError, valAtPathForError)
+				return fmt.Errorf("target of %q at path %q is not a string (actual type: %T, value: %+v)", "str_ins", pathRaw, valAtPathForError, valAtPathForError)
 			}
 
 			runes := []rune(currentString)
 			if pos < 0 || pos > len(runes) { // pos can be equal to len(runes) for appending
-				return fmt.Errorf("invalid \"pos\" %d for \"str_ins\" (string len %d) on path %q", pos, len(runes), pathRaw)
+				return fmt.Errorf("invalid %q %d for %q (string len %d) on path %q", "pos", pos, "str_ins", len(runes), pathRaw)
 			}
 			resultStr := string(runes[:pos]) + strToInsert + string(runes[pos:])
 
@@ -199,7 +199,7 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 			posFloat, posOk := getNumericValue(posAny)
 			lenFloat, lenOk := getNumericValue(lenAny)
 			if !posPresent || !lenPresent || !posOk || !lenOk {
-				return fmt.Errorf("invalid \"str_del\" op parameters (pos/len missing or wrong type) for path %q", pathRaw)
+				return fmt.Errorf("invalid %q op parameters (pos/len missing or wrong type) for path %q", "str_del", pathRaw)
 			}
 			pos := int(posFloat)
 			length := int(lenFloat)
@@ -213,25 +213,25 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 					currentString, getStringOk = val.(string)
 					valAtPathForError = val
 				} else {
-					return fmt.Errorf("target key %q for \"str_del\" not found in map at path %q", finalKey, pathRaw)
+					return fmt.Errorf("target key %q for %q not found in map at path %q", finalKey, "str_del", pathRaw)
 				}
 			} else if targetSlice, ok := parentContainer.([]any); ok {
 				if finalIndex >= 0 && finalIndex < len(targetSlice) {
 					currentString, getStringOk = targetSlice[finalIndex].(string)
 					valAtPathForError = targetSlice[finalIndex]
 				} else {
-					return fmt.Errorf("index %d out of bounds for \"str_del\" (getting string) at path %q", finalIndex, pathRaw)
+					return fmt.Errorf("index %d out of bounds for %q (getting string) at path %q", finalIndex, "str_del", pathRaw)
 				}
 			} else {
-				return fmt.Errorf("parent for \"str_del\" op at path %q is not a map or slice (type %T)", pathRaw, parentContainer)
+				return fmt.Errorf("parent for %q op at path %q is not a map or slice (type %T)", "str_del", pathRaw, parentContainer)
 			}
 
 			if !getStringOk {
-				return fmt.Errorf("target of \"str_del\" at path %q is not a string (actual type: %T, value: %+v)", pathRaw, valAtPathForError, valAtPathForError)
+				return fmt.Errorf("target of %q at path %q is not a string (actual type: %T, value: %+v)", "str_del", pathRaw, valAtPathForError, valAtPathForError)
 			}
 			runes := []rune(currentString)
 			if pos < 0 || length < 0 || pos+length > len(runes) {
-				return fmt.Errorf("invalid \"pos\" %d or \"len\" %d for \"str_del\" (string len %d) on path %q", pos, length, len(runes), pathRaw)
+				return fmt.Errorf("invalid %q %d or %q %d for %q (string len %d) on path %q", "pos", pos, "len", length, "str_del", len(runes), pathRaw)
 			}
 			resultStr := string(runes[:pos]) + string(runes[pos+length:])
 
@@ -244,31 +244,31 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 		case "inc":
 			incValueFromOp, incFieldExists := op["inc"]
 			if !incFieldExists {
-				return fmt.Errorf("op \"inc\" missing \"inc\" field for path %q", pathRaw)
+				return fmt.Errorf("op %q missing %q field for path %q", "inc", "inc", pathRaw)
 			}
 			incOpValFloat, incOpValIsNumber := getNumericValue(incValueFromOp)
 			if !incOpValIsNumber {
-				return fmt.Errorf("op \"inc\" \"inc\" field is not a recognized number (got %T) for path %q", incValueFromOp, pathRaw)
+				return fmt.Errorf("op %q %q field is not a recognized number (got %T) for path %q", "inc", "inc", incValueFromOp, pathRaw)
 			}
 
 			var currentValueHolder any
 
 			if targetMap, ok := parentContainer.(map[string]any); ok {
 				if finalKey == "" && finalIndex != -1 {
-					return fmt.Errorf("internal error: path %q resolved to index %d for a map parent in \"inc\"", pathRaw, finalIndex)
+					return fmt.Errorf("internal error: path %q resolved to index %d for a map parent in %q", pathRaw, finalIndex, "inc")
 				}
 				val, exists := targetMap[finalKey]
 				if !exists {
-					return fmt.Errorf("target key %q for \"inc\" not found in map at path %q", finalKey, pathRaw)
+					return fmt.Errorf("target key %q for %q not found in map at path %q", finalKey, "inc", pathRaw)
 				}
 				currentValueHolder = val
 			} else if targetSlice, ok := parentContainer.([]any); ok {
 				if finalIndex < 0 || finalIndex >= len(targetSlice) {
-					return fmt.Errorf("index %d out of bounds for \"inc\" at path %q (slice len %d)", finalIndex, pathRaw, len(targetSlice))
+					return fmt.Errorf("index %d out of bounds for %q at path %q (slice len %d)", finalIndex, "inc", pathRaw, len(targetSlice))
 				}
 				currentValueHolder = targetSlice[finalIndex]
 			} else {
-				return fmt.Errorf("parent container for \"inc\" at path %q is neither a map nor a slice (type %T)", pathRaw, parentContainer)
+				return fmt.Errorf("parent container for %q at path %q is neither a map nor a slice (type %T)", "inc", pathRaw, parentContainer)
 			}
 
 			currentNumAsFloat, successfullyReadCurrentValue := getNumericValue(currentValueHolder)
@@ -279,7 +279,7 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 				} else {
 					targetIdentifier = fmt.Sprintf("index %d", finalIndex)
 				}
-				return fmt.Errorf("target %q of \"inc\" at path %q is not a number. Value: %+v, Type: %T", targetIdentifier, pathRaw, currentValueHolder, currentValueHolder)
+				return fmt.Errorf("target %s of %q at path %q is not a number. Value: %+v, Type: %T", targetIdentifier, "inc", pathRaw, currentValueHolder, currentValueHolder)
 			}
 
 			incrementedResult := currentNumAsFloat + incOpValFloat
