@@ -31,3 +31,17 @@ func main() {
     // Output: map[greeting:"Hello world" counter:1]
 }
 ```
+
+## Supported operations
+
+go-jsonpatch implements the operations from [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) along with a few extensions. Paths are specified using JSON Pointer notation.
+
+- **add** (RFC 6902): add a value to a map key or slice index
+- **remove** (RFC 6902): remove a value from a map or slice
+- **replace** (RFC 6902): replace an existing value
+- **move** (RFC 6902): move a value from one path to another
+- **copy** (RFC 6902): copy a value from one path to another
+- **test** (RFC 6902): assert a value equals the provided one
+- **str_ins**: insert the given substring at `pos` in the string found at the path
+- **str_del**: delete `len` characters starting at `pos` in the string at the path
+- **inc**: increment a numeric value by the provided amount
