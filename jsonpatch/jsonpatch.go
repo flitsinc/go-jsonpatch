@@ -212,13 +212,13 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 				if finalIndex < 0 || finalIndex > len(targetSlice) {
 					return fmt.Errorf("index %d out of bounds for %q op at path %q (slice len %d)", finalIndex, "add", pathRaw, len(targetSlice))
 				}
-				newSlice := append(targetSlice, nil)
-				copy(newSlice[finalIndex+1:], targetSlice[finalIndex:])
-				newSlice[finalIndex] = value
+				targetSlice = append(targetSlice, nil)
+				copy(targetSlice[finalIndex+1:], targetSlice[finalIndex:])
+				targetSlice[finalIndex] = value
 				if parentMap, ok := containerParent.(map[string]any); ok {
-					parentMap[containerParentKey] = newSlice
+					parentMap[containerParentKey] = targetSlice
 				} else if parentSlice, ok := containerParent.([]any); ok {
-					parentSlice[containerParentIndex] = newSlice
+					parentSlice[containerParentIndex] = targetSlice
 				} else {
 					return fmt.Errorf("internal error: cannot assign updated slice for op %q", "add")
 				}
@@ -236,11 +236,12 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 				if finalIndex < 0 || finalIndex >= len(targetSlice) {
 					return fmt.Errorf("index %d out of bounds for %q op at path %q (slice len %d)", finalIndex, "remove", pathRaw, len(targetSlice))
 				}
-				newSlice := append(targetSlice[:finalIndex], targetSlice[finalIndex+1:]...)
+				copy(targetSlice[finalIndex:], targetSlice[finalIndex+1:])
+				targetSlice = targetSlice[:len(targetSlice)-1]
 				if parentMap, ok := containerParent.(map[string]any); ok {
-					parentMap[containerParentKey] = newSlice
+					parentMap[containerParentKey] = targetSlice
 				} else if parentSlice, ok := containerParent.([]any); ok {
-					parentSlice[containerParentIndex] = newSlice
+					parentSlice[containerParentIndex] = targetSlice
 				} else {
 					return fmt.Errorf("internal error: cannot assign updated slice for op %q", "remove")
 				}
