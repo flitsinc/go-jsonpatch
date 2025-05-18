@@ -356,6 +356,89 @@ func TestApply(t *testing.T) {
 				"log":    "Update: Initial",
 			},
 		},
+		{
+			name:        "add new key to object",
+			initialDoc:  map[string]any{"a": 1},
+			ops:         []map[string]interface{}{{"op": "add", "path": "/b", "value": 2}},
+			expectedDoc: map[string]any{"a": 1, "b": 2},
+		},
+		{
+			name:        "add element to array with dash",
+			initialDoc:  map[string]any{"arr": []interface{}{1, 2}},
+			ops:         []map[string]interface{}{{"op": "add", "path": "/arr/-", "value": 3}},
+			expectedDoc: map[string]any{"arr": []interface{}{1, 2, 3}},
+		},
+		{
+			name:        "remove key from object",
+			initialDoc:  map[string]any{"a": 1, "b": 2},
+			ops:         []map[string]interface{}{{"op": "remove", "path": "/b"}},
+			expectedDoc: map[string]any{"a": 1},
+		},
+		{
+			name:        "remove element from array",
+			initialDoc:  map[string]any{"arr": []interface{}{1, 2, 3}},
+			ops:         []map[string]interface{}{{"op": "remove", "path": "/arr/1"}},
+			expectedDoc: map[string]any{"arr": []interface{}{1, 3}},
+		},
+		{
+			name:        "copy value",
+			initialDoc:  map[string]any{"a": 1, "b": 2},
+			ops:         []map[string]interface{}{{"op": "copy", "from": "/a", "path": "/c"}},
+			expectedDoc: map[string]any{"a": 1, "b": 2, "c": 1},
+		},
+		{
+			name:        "move element within array",
+			initialDoc:  map[string]any{"arr": []interface{}{1, 2, 3}},
+			ops:         []map[string]interface{}{{"op": "move", "from": "/arr/0", "path": "/arr/2"}},
+			expectedDoc: map[string]any{"arr": []interface{}{2, 3, 1}},
+		},
+		{
+			name:        "test success",
+			initialDoc:  map[string]any{"a": map[string]any{"b": 1}},
+			ops:         []map[string]interface{}{{"op": "test", "path": "/a/b", "value": 1}},
+			expectedDoc: map[string]any{"a": map[string]any{"b": 1}},
+		},
+		{
+			name:          "test failure",
+			initialDoc:    map[string]any{"a": 1},
+			ops:           []map[string]interface{}{{"op": "test", "path": "/a", "value": 2}},
+			expectedError: "test operation failed",
+		},
+		{
+			name:        "add element to middle of array",
+			initialDoc:  map[string]any{"arr": []interface{}{1, 3}},
+			ops:         []map[string]interface{}{{"op": "add", "path": "/arr/1", "value": 2}},
+			expectedDoc: map[string]any{"arr": []interface{}{1, 2, 3}},
+		},
+		{
+			name:       "copy nested object",
+			initialDoc: map[string]any{"a": map[string]any{"b": 1}, "target": map[string]any{}},
+			ops:        []map[string]interface{}{{"op": "copy", "from": "/a", "path": "/target/copied"}},
+			expectedDoc: map[string]any{
+				"a":      map[string]any{"b": 1},
+				"target": map[string]any{"copied": map[string]any{"b": 1}},
+			},
+		},
+		{
+			name:        "copy array element",
+			initialDoc:  map[string]any{"arr": []interface{}{1, 2, 3}},
+			ops:         []map[string]interface{}{{"op": "copy", "from": "/arr/0", "path": "/arr/2"}},
+			expectedDoc: map[string]any{"arr": []interface{}{1, 2, 1, 3}},
+		},
+		{
+			name:          "move path prefix error",
+			initialDoc:    map[string]any{"a": map[string]any{"b": 1}},
+			ops:           []map[string]interface{}{{"op": "move", "from": "/a", "path": "/a/b"}},
+			expectedError: "from path \"/a\" is a proper prefix",
+		},
+		{
+			name:       "test object equality",
+			initialDoc: map[string]any{"obj": map[string]any{"a": 1, "b": []interface{}{"x", "y"}}},
+			ops: []map[string]interface{}{
+				{"op": "test", "path": "/obj", "value": map[string]interface{}{"a": 1, "b": []interface{}{"x", "y"}}},
+			},
+			expectedDoc: map[string]any{"obj": map[string]any{"a": 1, "b": []interface{}{"x", "y"}}},
+		},
 	}
 
 	for _, tc := range testCases {
