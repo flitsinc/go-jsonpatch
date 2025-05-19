@@ -5,7 +5,7 @@ go-jsonpatch is a tiny library that applies a subset of JSON Patch operations to
 ## Installation
 
 ```
-go get github.com/blixt/go-jsonpatch/jsonpatch
+go get github.com/flitsinc/go-jsonpatch/jsonpatch
 ```
 
 ## Example
@@ -15,7 +15,7 @@ package main
 
 import (
     "fmt"
-    "github.com/blixt/go-jsonpatch/jsonpatch"
+    "github.com/flitsinc/go-jsonpatch/jsonpatch"
 )
 
 func main() {

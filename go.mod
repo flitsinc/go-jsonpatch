@@ -1,3 +1,3 @@
-module github.com/blixt/go-jsonpatch
+module github.com/flitsinc/go-jsonpatch
 
 go 1.24.3
