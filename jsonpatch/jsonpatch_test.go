@@ -439,6 +439,42 @@ func TestApply(t *testing.T) {
 			},
 			expectedDoc: map[string]any{"obj": map[string]any{"a": 1, "b": []interface{}{"x", "y"}}},
 		},
+		{
+			name:        "str_del with str parameter",
+			initialDoc:  map[string]any{"text": "Hello cruel world"},
+			ops:         []map[string]interface{}{{"op": "str_del", "path": "/text", "pos": 6, "str": "cruel "}},
+			expectedDoc: map[string]any{"text": "Hello world"},
+		},
+		{
+			name:        "str_del with str parameter on unicode text",
+			initialDoc:  map[string]any{"text": "Hello 🌍 world"},
+			ops:         []map[string]interface{}{{"op": "str_del", "path": "/text", "pos": 6, "str": "🌍 "}},
+			expectedDoc: map[string]any{"text": "Hello world"},
+		},
+		{
+			name:        "str_del with str parameter empty string",
+			initialDoc:  map[string]any{"text": "Hello world"},
+			ops:         []map[string]interface{}{{"op": "str_del", "path": "/text", "pos": 5, "str": ""}},
+			expectedDoc: map[string]any{"text": "Hello world"},
+		},
+		{
+			name:        "str_del with len parameter (existing functionality)",
+			initialDoc:  map[string]any{"text": "Hello cruel world"},
+			ops:         []map[string]interface{}{{"op": "str_del", "path": "/text", "pos": 6, "len": 6}},
+			expectedDoc: map[string]any{"text": "Hello world"},
+		},
+		{
+			name:          "str_del with neither str nor len",
+			initialDoc:    map[string]any{"text": "Hello world"},
+			ops:           []map[string]interface{}{{"op": "str_del", "path": "/text", "pos": 5}},
+			expectedError: "str or len required",
+		},
+		{
+			name:        "str_del with str taking precedence over len",
+			initialDoc:  map[string]any{"text": "Hello cruel world"},
+			ops:         []map[string]interface{}{{"op": "str_del", "path": "/text", "pos": 6, "str": "cruel", "len": 10}},
+			expectedDoc: map[string]any{"text": "Hello  world"}, // "cruel" is 5 chars, not 10
+		},
 	}
 
 	for _, tc := range testCases {

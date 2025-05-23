@@ -321,14 +321,29 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 
 		case "str_del":
 			posAny, posPresent := op["pos"]
+			strToDelete, strPresent := op["str"].(string)
 			lenAny, lenPresent := op["len"]
 			posFloat, posOk := getNumericValue(posAny)
-			lenFloat, lenOk := getNumericValue(lenAny)
-			if !posPresent || !lenPresent || !posOk || !lenOk {
-				return fmt.Errorf("invalid %q op parameters (pos/len missing or wrong type) for path %q", "str_del", pathRaw)
+
+			if !posPresent || !posOk {
+				return fmt.Errorf("invalid %q op parameters (pos missing or wrong type) for path %q", "str_del", pathRaw)
 			}
+
+			var length int
+			if strPresent {
+				// Use rune length for Unicode support, matching json-joy behavior
+				length = len([]rune(strToDelete))
+			} else if lenPresent {
+				lenFloat, lenOk := getNumericValue(lenAny)
+				if !lenOk {
+					return fmt.Errorf("invalid %q op parameters (len wrong type) for path %q", "str_del", pathRaw)
+				}
+				length = int(lenFloat)
+			} else {
+				return fmt.Errorf("invalid %q op parameters (str or len required) for path %q", "str_del", pathRaw)
+			}
+
 			pos := int(posFloat)
-			length := int(lenFloat)
 
 			var currentString string
 			var getStringOk bool
