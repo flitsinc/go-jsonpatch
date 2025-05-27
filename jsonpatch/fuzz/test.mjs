@@ -15,29 +15,28 @@ import { diff } from "json-joy/lib/util/diff/str.js";
 const INS = 1;
 const DEL = -1;
 
-
 enablePatches();
 
 function unicodeLength(str) {
-        return Array.from(str).length;
+	return Array.from(str).length;
 }
 
 function unicodeInsert(str, index, insertStr) {
-        const arr = Array.from(str);
-        arr.splice(index, 0, ...Array.from(insertStr));
-        return arr.join("");
+	const arr = Array.from(str);
+	arr.splice(index, 0, ...Array.from(insertStr));
+	return arr.join("");
 }
 
 function unicodeDelete(str, start, deleteLen) {
-        const arr = Array.from(str);
-        arr.splice(start, deleteLen);
-        return arr.join("");
+	const arr = Array.from(str);
+	arr.splice(start, deleteLen);
+	return arr.join("");
 }
 
 function unicodeReplace(str, index, replaceStr) {
-        const arr = Array.from(str);
-        arr.splice(index, 1, ...Array.from(replaceStr));
-        return arr.join("");
+	const arr = Array.from(str);
+	arr.splice(index, 1, ...Array.from(replaceStr));
+	return arr.join("");
 }
 
 // Unicode test strings with various complexities
@@ -143,7 +142,7 @@ function applyRandomMutations(draft) {
 					}
 					break;
 				case 1: // Inline text editing - comprehensive mutations
-                                        if (typeof draft.text === "string" && unicodeLength(draft.text) > 0) {
+					if (typeof draft.text === "string" && unicodeLength(draft.text) > 0) {
 						const operations = [
 							"replace",
 							"prepend",
@@ -166,44 +165,54 @@ function applyRandomMutations(draft) {
 							case "append":
 								draft.text = `${draft.text} :SUFFIX`;
 								break;
-                                                        case "insert": {
-                                                                const pos = Math.floor(Math.random() * (unicodeLength(draft.text) + 1));
-                                                                draft.text = unicodeInsert(draft.text, pos, "[INS]");
-                                                                break;
-                                                        }
-                                                        case "delete": {
-                                                                if (unicodeLength(draft.text) > 1) {
-                                                                        const start = Math.floor(Math.random() * unicodeLength(draft.text));
-                                                                        const end = Math.min(
-                                                                               start + Math.floor(Math.random() * 3) + 1,
-                                                                               unicodeLength(draft.text),
-                                                                        );
-                                                                        draft.text = unicodeDelete(draft.text, start, end - start);
-                                                                }
-                                                                break;
-                                                        }
-                                                        case "substitute": {
-                                                                const pos = Math.floor(Math.random() * unicodeLength(draft.text));
-                                                                const replacement = ["X", "@", "#", "*"][
-                                                                        Math.floor(Math.random() * 4)
-                                                                ];
-                                                                draft.text = unicodeReplace(draft.text, pos, replacement);
-                                                                break;
-                                                        }
-                                                        case "split_insert": {
-                                                                const pos = Math.floor(Math.random() * (unicodeLength(draft.text) + 1));
-                                                                const insertText = ` | ${generateRandomString().slice(0, 10)} | `;
-                                                                draft.text = unicodeInsert(draft.text, pos, insertText);
-                                                                break;
-                                                        }
-                                                        case "unicode_insert": {
-                                                                const pos = Math.floor(Math.random() * (unicodeLength(draft.text) + 1));
-                                                                const unicodeChars = ["🔧", "⚡", "🎯", "✨", "🚀", "💡", "🔥"];
-                                                                const char =
-                                                                        unicodeChars[Math.floor(Math.random() * unicodeChars.length)];
-                                                                draft.text = unicodeInsert(draft.text, pos, char);
-                                                                break;
-                                                        }
+							case "insert": {
+								const pos = Math.floor(
+									Math.random() * (unicodeLength(draft.text) + 1),
+								);
+								draft.text = unicodeInsert(draft.text, pos, "[INS]");
+								break;
+							}
+							case "delete": {
+								if (unicodeLength(draft.text) > 1) {
+									const start = Math.floor(
+										Math.random() * unicodeLength(draft.text),
+									);
+									const end = Math.min(
+										start + Math.floor(Math.random() * 3) + 1,
+										unicodeLength(draft.text),
+									);
+									draft.text = unicodeDelete(draft.text, start, end - start);
+								}
+								break;
+							}
+							case "substitute": {
+								const pos = Math.floor(
+									Math.random() * unicodeLength(draft.text),
+								);
+								const replacement = ["X", "@", "#", "*"][
+									Math.floor(Math.random() * 4)
+								];
+								draft.text = unicodeReplace(draft.text, pos, replacement);
+								break;
+							}
+							case "split_insert": {
+								const pos = Math.floor(
+									Math.random() * (unicodeLength(draft.text) + 1),
+								);
+								const insertText = ` | ${generateRandomString().slice(0, 10)} | `;
+								draft.text = unicodeInsert(draft.text, pos, insertText);
+								break;
+							}
+							case "unicode_insert": {
+								const pos = Math.floor(
+									Math.random() * (unicodeLength(draft.text) + 1),
+								);
+								const unicodeChars = ["🔧", "⚡", "🎯", "✨", "🚀", "💡", "🔥"];
+								const char =
+									unicodeChars[Math.floor(Math.random() * unicodeChars.length)];
+								draft.text = unicodeInsert(draft.text, pos, char);
+								break;
+							}
 						}
 					}
 					break;
@@ -241,44 +250,48 @@ function applyRandomMutations(draft) {
 						draft.nested.array[index] = generateRandomValue(2);
 					}
 					break;
-                                case 8: // Inline string deletion
-                                        if (typeof draft.text === "string" && unicodeLength(draft.text) > 3) {
-                                                const deleteLen = Math.floor(Math.random() * 5) + 1;
-                                                const start = Math.floor(
-                                                        Math.random() * (unicodeLength(draft.text) - deleteLen),
-                                                );
-                                                draft.text = unicodeDelete(draft.text, start, deleteLen);
-                                        }
+				case 8: // Inline string deletion
+					if (typeof draft.text === "string" && unicodeLength(draft.text) > 3) {
+						const deleteLen = Math.floor(Math.random() * 5) + 1;
+						const start = Math.floor(
+							Math.random() * (unicodeLength(draft.text) - deleteLen),
+						);
+						draft.text = unicodeDelete(draft.text, start, deleteLen);
+					}
 					break;
-                                case 9: // Complex string operations
-                                        if (typeof draft.text === "string" && unicodeLength(draft.text) > 2) {
+				case 9: // Complex string operations
+					if (typeof draft.text === "string" && unicodeLength(draft.text) > 2) {
 						// Random combination of insert, delete, and replace
 						const operations = Math.floor(Math.random() * 3) + 1;
-                                                for (let op = 0; op < operations; op++) {
-                                                        const opType = Math.floor(Math.random() * 3);
-                                                        if (unicodeLength(draft.text) === 0) break;
-                                                        switch (opType) {
-                                                                case 0: // insert
-                                                                        if (unicodeLength(draft.text) < 100) {
-                                                                               const pos = Math.floor(
-                                                                               Math.random() * (unicodeLength(draft.text) + 1),
-                                                                               );
-                                                                               draft.text = unicodeInsert(draft.text, pos, "*");
-                                                                        }
-                                                                        break;
-                                                                case 1: // delete
-                                                                        if (unicodeLength(draft.text) > 1) {
-                                                                               const pos = Math.floor(Math.random() * unicodeLength(draft.text));
-                                                                               draft.text = unicodeDelete(draft.text, pos, 1);
-                                                                        }
-                                                                        break;
-                                                                case 2: // replace
-                                                                        if (unicodeLength(draft.text) > 0) {
-                                                                               const pos = Math.floor(Math.random() * unicodeLength(draft.text));
-                                                                               draft.text = unicodeReplace(draft.text, pos, "~");
-                                                                        }
-                                                                        break;
-                                                        }
+						for (let op = 0; op < operations; op++) {
+							const opType = Math.floor(Math.random() * 3);
+							if (unicodeLength(draft.text) === 0) break;
+							switch (opType) {
+								case 0: // insert
+									if (unicodeLength(draft.text) < 100) {
+										const pos = Math.floor(
+											Math.random() * (unicodeLength(draft.text) + 1),
+										);
+										draft.text = unicodeInsert(draft.text, pos, "*");
+									}
+									break;
+								case 1: // delete
+									if (unicodeLength(draft.text) > 1) {
+										const pos = Math.floor(
+											Math.random() * unicodeLength(draft.text),
+										);
+										draft.text = unicodeDelete(draft.text, pos, 1);
+									}
+									break;
+								case 2: // replace
+									if (unicodeLength(draft.text) > 0) {
+										const pos = Math.floor(
+											Math.random() * unicodeLength(draft.text),
+										);
+										draft.text = unicodeReplace(draft.text, pos, "~");
+									}
+									break;
+							}
 						}
 					}
 					break;
