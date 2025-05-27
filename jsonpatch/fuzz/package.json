@@ -1,0 +1,12 @@
+{
+	"name": "test",
+	"version": "0.0.0",
+	"license": "UNLICENSED",
+	"type": "module",
+	"main": "test.mjs",
+	"dependencies": {
+		"diff": "^8.0.2",
+		"immer": "^10.1.1",
+		"json-joy": "^17.43.0"
+	}
+}
