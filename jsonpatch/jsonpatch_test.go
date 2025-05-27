@@ -464,6 +464,18 @@ func TestApply(t *testing.T) {
 			expectedDoc: map[string]any{"text": "Hello world"},
 		},
 		{
+			name:        "str_ins with utf16 offset after emoji",
+			initialDoc:  map[string]any{"text": "Hello 🌍 world"},
+			ops:         []map[string]interface{}{{"op": "str_ins", "path": "/text", "pos": 9, "str": "big "}},
+			expectedDoc: map[string]any{"text": "Hello 🌍 big world"},
+		},
+		{
+			name:        "str_del utf16 offset after emoji",
+			initialDoc:  map[string]any{"text": "Hello 🌍 world"},
+			ops:         []map[string]interface{}{{"op": "str_del", "path": "/text", "pos": 8, "str": " world"}},
+			expectedDoc: map[string]any{"text": "Hello 🌍"},
+		},
+		{
 			name:          "str_del with neither str nor len",
 			initialDoc:    map[string]any{"text": "Hello world"},
 			ops:           []map[string]interface{}{{"op": "str_del", "path": "/text", "pos": 5}},

@@ -149,6 +149,50 @@ func jsonEqual(a, b any) bool {
 	}
 }
 
+// utf16OffsetToRuneIndex converts a JavaScript UTF-16 offset to a Go rune index.
+func utf16OffsetToRuneIndex(text string, jsOffset int) int {
+	if jsOffset <= 0 {
+		return 0
+	}
+	runeIndex := 0
+	codeUnits := 0
+	for _, r := range text {
+		unit := 1
+		if r > 0xFFFF {
+			unit = 2
+		}
+		if codeUnits+unit > jsOffset {
+			break
+		}
+		codeUnits += unit
+		runeIndex++
+	}
+	return runeIndex
+}
+
+// utf16LenToRuneLen converts a JavaScript UTF-16 length starting at jsStart to a rune length.
+func utf16LenToRuneLen(text string, jsStart, jsLen int) int {
+	if jsLen <= 0 {
+		return 0
+	}
+	startRune := utf16OffsetToRuneIndex(text, jsStart)
+	endRune := utf16OffsetToRuneIndex(text, jsStart+jsLen)
+	return endRune - startRune
+}
+
+// utf16Length returns the length of the string in UTF-16 code units.
+func utf16Length(text string) int {
+	l := 0
+	for _, r := range text {
+		if r > 0xFFFF {
+			l += 2
+		} else {
+			l++
+		}
+	}
+	return l
+}
+
 // Apply applies a slice of JSON Patch operations to a document represented as a map.
 // The operations should conform to RFC 6902.
 // Supported operations: "replace", "str_ins", "str_del", "inc".
@@ -276,8 +320,6 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 			if !posPresent || !posOk || !strOk {
 				return fmt.Errorf("invalid %q op parameters (pos/str missing or wrong type) for path %q", "str_ins", pathRaw)
 			}
-			pos := int(posFloat)
-
 			var currentString string
 			var getStringOk bool
 			var valAtPathForError any
@@ -304,6 +346,10 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 				return fmt.Errorf("target of %q at path %q is not a string (actual type: %T, value: %+v)", "str_ins", pathRaw, valAtPathForError, valAtPathForError)
 			}
 
+			if int(posFloat) > utf16Length(currentString) {
+				return fmt.Errorf("invalid %q %d for %q (string len %d) on path %q", "pos", int(posFloat), "str_ins", utf16Length(currentString), pathRaw)
+			}
+			pos := utf16OffsetToRuneIndex(currentString, int(posFloat))
 			runes := []rune(currentString)
 			if pos < 0 || pos > len(runes) { // pos can be equal to len(runes) for appending
 				return fmt.Errorf("invalid %q %d for %q (string len %d) on path %q", "pos", pos, "str_ins", len(runes), pathRaw)
@@ -328,22 +374,6 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 			if !posPresent || !posOk {
 				return fmt.Errorf("invalid %q op parameters (pos missing or wrong type) for path %q", "str_del", pathRaw)
 			}
-
-			var length int
-			if strPresent {
-				// Use rune length for Unicode support, matching json-joy behavior
-				length = len([]rune(strToDelete))
-			} else if lenPresent {
-				lenFloat, lenOk := getNumericValue(lenAny)
-				if !lenOk {
-					return fmt.Errorf("invalid %q op parameters (len wrong type) for path %q", "str_del", pathRaw)
-				}
-				length = int(lenFloat)
-			} else {
-				return fmt.Errorf("invalid %q op parameters (str or len required) for path %q", "str_del", pathRaw)
-			}
-
-			pos := int(posFloat)
 
 			var currentString string
 			var getStringOk bool
@@ -370,6 +400,25 @@ func Apply(doc map[string]any, operations []map[string]any) error {
 			if !getStringOk {
 				return fmt.Errorf("target of %q at path %q is not a string (actual type: %T, value: %+v)", "str_del", pathRaw, valAtPathForError, valAtPathForError)
 			}
+
+			if int(posFloat) > utf16Length(currentString) {
+				return fmt.Errorf("invalid %q %d or %q %v for %q (string len %d) on path %q", "pos", int(posFloat), "len", lenAny, "str_del", utf16Length(currentString), pathRaw)
+			}
+
+			pos := utf16OffsetToRuneIndex(currentString, int(posFloat))
+			var length int
+			if strPresent {
+				length = len([]rune(strToDelete))
+			} else if lenPresent {
+				lenFloat, lenOk := getNumericValue(lenAny)
+				if !lenOk {
+					return fmt.Errorf("invalid %q op parameters (len wrong type) for path %q", "str_del", pathRaw)
+				}
+				length = utf16LenToRuneLen(currentString, int(posFloat), int(lenFloat))
+			} else {
+				return fmt.Errorf("invalid %q op parameters (str or len required) for path %q", "str_del", pathRaw)
+			}
+
 			runes := []rune(currentString)
 			if pos < 0 || length < 0 || pos+length > len(runes) {
 				return fmt.Errorf("invalid %q %d or %q %d for %q (string len %d) on path %q", "pos", pos, "len", length, "str_del", len(runes), pathRaw)
