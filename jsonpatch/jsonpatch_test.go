@@ -154,8 +154,46 @@ func TestApply(t *testing.T) {
 				"nested":  map[string]any{"value": "updated"},
 			},
 		},
+		{
+			name: "replace key containing slash",
+			initialDoc: map[string]any{
+				"viewStates": map[string]any{
+					"Initial Load / No Track Selected": map[string]any{"isLoading": true},
+				},
+			},
+			ops: []map[string]interface{}{
+				{"op": "replace", "path": "/viewStates/Initial Load ~1 No Track Selected/isLoading", "value": false},
+			},
+			expectedDoc: map[string]any{
+				"viewStates": map[string]any{
+					"Initial Load / No Track Selected": map[string]any{"isLoading": false},
+				},
+			},
+		},
+		{
+			name: "replace key containing tilde",
+			initialDoc: map[string]any{
+				"config": map[string]any{
+					"Feature~Flag": true,
+				},
+			},
+			ops: []map[string]interface{}{
+				{"op": "replace", "path": "/config/Feature~0Flag", "value": false},
+			},
+			expectedDoc: map[string]any{
+				"config": map[string]any{
+					"Feature~Flag": false,
+				},
+			},
+		},
 
 		// --- Error Cases ---
+		{
+			name:          "invalid pointer escape sequence",
+			initialDoc:    map[string]any{"foo": map[string]any{"bar": 1}},
+			ops:           []map[string]interface{}{{"op": "replace", "path": "/foo/~2bar", "value": 2}},
+			expectedError: "invalid JSON pointer",
+		},
 		{
 			name:          "invalid op: missing op field",
 			initialDoc:    map[string]any{"foo": "bar"},
@@ -510,5 +548,178 @@ func TestApply(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestResolvePath(t *testing.T) {
+	baseDoc := map[string]any{
+		"settings": map[string]any{"theme": "dark"},
+		"list":     []any{"zero", "one", "two"},
+	}
+
+	parent, finalKey, finalIndex, containerParent, containerParentKey, containerParentIndex, err := resolvePath(baseDoc, "/settings/theme")
+	if err != nil {
+		t.Fatalf("resolvePath returned error: %v", err)
+	}
+	parentMap, ok := parent.(map[string]any)
+	if !ok {
+		t.Fatalf("expected parent container to be map, got %T", parent)
+	}
+	if finalKey != "theme" {
+		t.Fatalf("expected key 'theme', got %q", finalKey)
+	}
+	containerParentMap, ok := containerParent.(map[string]any)
+	if !ok || containerParentKey != "settings" || containerParentIndex != -1 {
+		t.Fatalf("unexpected container parent info: %v, %q, %d", containerParent, containerParentKey, containerParentIndex)
+	}
+	if _, exists := containerParentMap["settings"]; !exists {
+		t.Fatalf("expected container parent to expose 'settings'")
+	}
+	if parentMap[finalKey] != "dark" {
+		t.Fatalf("expected value 'dark', got %v", parentMap[finalKey])
+	}
+
+	parent, finalKey, finalIndex, containerParent, containerParentKey, containerParentIndex, err = resolvePath(baseDoc, "/list/1")
+	if err != nil {
+		t.Fatalf("resolvePath returned error: %v", err)
+	}
+	parentSlice, ok := parent.([]any)
+	if !ok {
+		t.Fatalf("expected slice parent, got %T", parent)
+	}
+	if finalIndex != 1 {
+		t.Fatalf("expected index 1, got %d", finalIndex)
+	}
+	containerParentMap, ok = containerParent.(map[string]any)
+	if !ok || containerParentKey != "list" || containerParentIndex != -1 {
+		t.Fatalf("unexpected container parent info for list: %v, %q, %d", containerParent, containerParentKey, containerParentIndex)
+	}
+	if _, exists := containerParentMap["list"]; !exists {
+		t.Fatalf("expected container parent to expose 'list'")
+	}
+	if parentSlice[finalIndex] != "one" {
+		t.Fatalf("expected value 'one', got %v", parentSlice[finalIndex])
+	}
+
+	_, _, finalIndex, _, _, _, err = resolvePath(baseDoc, "/list/-")
+	if err != nil {
+		t.Fatalf("resolvePath returned error: %v", err)
+	}
+	if finalIndex != len(baseDoc["list"].([]any)) {
+		t.Fatalf("expected index %d for '-', got %d", len(baseDoc["list"].([]any)), finalIndex)
+	}
+}
+
+func TestResolvePathErrors(t *testing.T) {
+	testCases := []struct {
+		name    string
+		doc     map[string]any
+		path    string
+		wantErr string
+	}{
+		{
+			name:    "dash not final",
+			doc:     map[string]any{"list": []any{1, 2}},
+			path:    "/list/-/value",
+			wantErr: "is not a valid integer index",
+		},
+		{
+			name:    "non-container before last",
+			doc:     map[string]any{"a": map[string]any{"b": 1}},
+			path:    "/a/b/c",
+			wantErr: "parent is type int",
+		},
+		{
+			name:    "non-container at final",
+			doc:     map[string]any{"a": "leaf"},
+			path:    "/a/b",
+			wantErr: "before final segment; parent is type string",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, _, _, _, _, err := resolvePath(tc.doc, tc.path)
+			if err == nil {
+				t.Fatalf("expected error containing %q", tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("expected error containing %q, got %q", tc.wantErr, err.Error())
+			}
+		})
+	}
+}
+
+func TestSliceHelpers(t *testing.T) {
+	base := []any{0, 1, 2}
+	withInsert := insertValueIntoSlice(base, 1, "x")
+	if got := withInsert[1]; got != "x" {
+		t.Fatalf("insertValueIntoSlice expected 'x' at index 1, got %v", got)
+	}
+	if len(withInsert) != 4 {
+		t.Fatalf("expected length 4 after insert, got %d", len(withInsert))
+	}
+
+	trimmed, removed := removeValueFromSlice(withInsert, 2)
+	if removed != 1 {
+		t.Fatalf("expected removed value 1, got %v", removed)
+	}
+	if len(trimmed) != 3 {
+		t.Fatalf("expected length 3 after remove, got %d", len(trimmed))
+	}
+
+	parentMap := map[string]any{"arr": []any{1, 2}}
+	updatedSlice := []any{7, 8}
+	if err := assignSliceToParent(parentMap, "arr", -1, updatedSlice, "test"); err != nil {
+		t.Fatalf("assignSliceToParent on map returned error: %v", err)
+	}
+	if !reflect.DeepEqual(parentMap["arr"], updatedSlice) {
+		t.Fatalf("assignSliceToParent did not update map: %v", parentMap["arr"])
+	}
+
+	parentSlice := []any{[]any{0, 1}}
+	if err := assignSliceToParent(parentSlice, "", 0, []any{3, 4}, "test"); err != nil {
+		t.Fatalf("assignSliceToParent on slice returned error: %v", err)
+	}
+	if got := parentSlice[0].([]any); !reflect.DeepEqual(got, []any{3, 4}) {
+		t.Fatalf("assignSliceToParent did not update slice parent: %v", got)
+	}
+
+	if err := assignSliceToParent(nil, "", 0, []any{}, "test"); err == nil {
+		t.Fatalf("expected error when parent is invalid")
+	}
+}
+
+func TestJSONEqual(t *testing.T) {
+	testCases := []struct {
+		name  string
+		a     any
+		b     any
+		equal bool
+	}{
+		{name: "numeric equality", a: 1, b: float64(1), equal: true},
+		{name: "bool equality", a: true, b: true, equal: true},
+		{name: "nil equality", a: nil, b: nil, equal: true},
+		{name: "map mismatch", a: map[string]any{"a": 1}, b: map[string]any{"a": 2}, equal: false},
+		{name: "slice equality interface", a: []any{1, "two"}, b: []interface{}{1, "two"}, equal: true},
+		{name: "slice mismatch", a: []any{1, 2}, b: []any{1, 3}, equal: false},
+		{name: "struct equality", a: struct{ X int }{1}, b: struct{ X int }{1}, equal: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := jsonEqual(tc.a, tc.b); got != tc.equal {
+				t.Fatalf("jsonEqual(%v, %v) = %v, want %v", tc.a, tc.b, got, tc.equal)
+			}
+		})
+	}
+}
+
+func TestUTF16LenToRuneLen(t *testing.T) {
+	if got := utf16LenToRuneLen("hello", 0, 0); got != 0 {
+		t.Fatalf("expected zero length when len is zero, got %d", got)
+	}
+	if got := utf16LenToRuneLen("a🌍b", 1, 2); got != 1 {
+		t.Fatalf("expected rune length 1, got %d", got)
 	}
 }
