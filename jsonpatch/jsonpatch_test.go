@@ -210,7 +210,7 @@ func TestApply(t *testing.T) {
 			name:          "path segment not found in map",
 			initialDoc:    map[string]any{"a": map[string]any{"b": 1}},
 			ops:           []map[string]interface{}{{"op": "replace", "path": "/a/c", "value": 2}},
-			expectedError: "path segment \"c\" not found in map",
+			expectedError: "op \"replace\": path segment \"c\" not found at path \"/a/c\"",
 		},
 		{
 			name:          "array index out of bounds (replace)",
@@ -228,19 +228,19 @@ func TestApply(t *testing.T) {
 			name:          "str_ins on non-string",
 			initialDoc:    map[string]any{"field": 123},
 			ops:           []map[string]interface{}{{"op": "str_ins", "path": "/field", "pos": 0, "str": "hi"}},
-			expectedError: "target of \"str_ins\" at path \"/field\" is not a string",
+			expectedError: "op \"str_ins\": target at path \"/field\" is not a string",
 		},
 		{
 			name:          "inc on non-number",
 			initialDoc:    map[string]any{"field": "not a number"},
 			ops:           []map[string]interface{}{{"op": "inc", "path": "/field", "inc": 1}},
-			expectedError: "target key \"field\" of \"inc\" at path \"/field\" is not a number",
+			expectedError: "op \"inc\": target key \"field\" at path \"/field\" is not a number",
 		},
 		{
 			name:          "str_ins missing pos",
 			initialDoc:    map[string]any{"text": "abc"},
 			ops:           []map[string]interface{}{{"op": "str_ins", "path": "/text", "str": "hi"}},
-			expectedError: "invalid \"str_ins\" op parameters",
+			expectedError: "op \"str_ins\": invalid parameters (pos/str missing or wrong type) for path \"/text\"",
 		},
 		{
 			name:          "inc missing inc field",
@@ -252,13 +252,13 @@ func TestApply(t *testing.T) {
 			name:          "inc with non-numeric inc value",
 			initialDoc:    map[string]any{"counter": 0},
 			ops:           []map[string]interface{}{{"op": "inc", "path": "/counter", "inc": "not-a-number"}},
-			expectedError: "op \"inc\" \"inc\" field is not a recognized number",
+			expectedError: "op \"inc\": \"inc\" field is not a number (got string) for path \"/counter\"",
 		},
 		{
 			name:          "str_del pos out of bounds",
 			initialDoc:    map[string]any{"text": "abc"},
 			ops:           []map[string]interface{}{{"op": "str_del", "path": "/text", "pos": 5, "len": 1}},
-			expectedError: "invalid \"pos\" 5 or \"len\" 1 for \"str_del\"",
+			expectedError: "op \"str_del\": invalid pos 5 or len 1 (string len 3) on path \"/text\"",
 		},
 		{
 			name:          "unsupported op on root",
@@ -276,7 +276,7 @@ func TestApply(t *testing.T) {
 			name:          "replace path to map resolves to index", // Internal consistency check
 			initialDoc:    map[string]any{"a": map[string]any{"b": "c"}},
 			ops:           []map[string]interface{}{{"op": "replace", "path": "/a/0", "value": "d"}}, // /a is a map, /0 implies index
-			expectedError: "path segment \"0\" not found in map for path \"/a/0\"",                   // error occurs at path traversal because "0" is not a key in map "a"
+			expectedError: "op \"replace\": path segment \"0\" not found at path \"/a/0\"",           // error occurs at path traversal because "0" is not a key in map "a"
 		},
 		{
 			name:        "str_ins on array element",
@@ -440,7 +440,7 @@ func TestApply(t *testing.T) {
 			name:          "test failure",
 			initialDoc:    map[string]any{"a": 1},
 			ops:           []map[string]interface{}{{"op": "test", "path": "/a", "value": 2}},
-			expectedError: "test operation failed",
+			expectedError: "op \"test\": test failed at path \"/a\"",
 		},
 		{
 			name:        "add element to middle of array",
